@@ -16,15 +16,22 @@ after do
   response.body = JSON.dump(response.body)
 end
 
+def amount
+  amount = ((params[:amount].to_f)*100).to_i
+  halt 422, json({
+    message: "Expected positive amount"
+  }) unless amount.positive?
+  amount
+end
+
 get '/' do
-  if params[:amount].to_f && params[:destination] && params[:stripeToken]
-    amount = ((params[:amount].to_f)*100).to_i
+  if params[:amount] && params[:destination] && params[:stripeToken]
     begin
       @charge = Stripe::Charge.create(
         amount: amount,
-        currency: "usd",
+        currency: params[:currency] || "usd",
         card: params[:stripeToken],
-        description: "Description",
+        description: params[:description] || "Description",
         destination: {account: params[:destination]},
         )
       { amount: amount, destination: params[:destination] }.to_json
@@ -35,7 +42,7 @@ get '/' do
     end
   else
     halt 422, json({
-      message: "Bad payload"
+      message: "Bad payload", payload: params,
     })
   end
 end
